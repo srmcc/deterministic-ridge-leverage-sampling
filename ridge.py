@@ -255,6 +255,22 @@ def plot_random_orthog_proj(A, index_keep, epsilon, k, plot_loc):
     plt.savefig(plot_loc + 'plot_random_orthog_proj_histogram' + str(k) + '.pdf')
     plt.close()
 
+def plot_comparison(tau_sorted, tau_sorted_k):
+    d=len(tau_sorted)
+    fig, ax = plt.subplots()
+    ax.scatter(tau_sorted, tau_sorted_k.loc[tau_sorted.index],c='gray',s=36,edgecolors='gray',
+                    lw = 0.5)
+    ax.set_xlabel('Ridge leverage score')
+    ax.set_ylabel('Classical leverage score')
+    ax.set_ylim((-0.05, 1.05))
+    ax.set_xlim((-0.05, 1.05))
+    fig.tight_layout()
+    plt.savefig(plot_loc+ 'plot_score_comparison_' +str(k) +'.pdf')
+    plt.close()
+
+plot_comparison(tau_sorted, tau_sorted_cl)
+
+
 
 def get_rnaseq_data_more(setup_dir):
     if not os.path.exists(setup_dir + '/data'):
@@ -280,3 +296,6 @@ if __name__ == "__main__":
     setup_dir= os.getcwd()
     A= get_rnaseq_data_more(setup_dir)
     theta, index_keep, tau_sorted, index_drop, tau_tot, AnotkF2 = det_ridge_leverage(A, k, epsilon, plot, plot_loc)
+    print('ridge theta', theta)
+    theta_cl, index_keep_cl, tau_sorted_cl, index_drop_cl, tau_tot_cl = det_ksub_leverage(A,A.shape[0],  epsilon, plot, plot_loc + '_classical_')
+    plot_comparison(tau_sorted, tau_sorted_cl)
