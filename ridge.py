@@ -664,6 +664,9 @@ if __name__ == "__main__":
     if not os.path.exists(data_directory):
         os.system('mkdir ' + data_directory)
         os.system(rscript_path + ' download_data.R '+ disease_type + ' '+ data_directory)
+        os.system('mkdir ' + data_directory +'not_in_use/')
+        for csvs in ['tcga_LGG_Methylation_280.csv', 'tcga_LGG_RNASeq2_barcodes.csv', 'tcga_LGG_Clinical_280.csv']:
+            os.system('mv ' +data_directory + csvs+ ' ' + data_directory +'not_in_use/' )
     mo, mo_order=load_data(data_directory)
     mo=mo.T
     mo=non_zero_cols(mo)
