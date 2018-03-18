@@ -33,7 +33,7 @@ source activate ridge
 ```
 Change directory to the cloned repository:
 ```bash
-cd to /path/to/determinstic-ridge-leverage-sampling
+cd  /path/to/determinstic-ridge-leverage-sampling
 ```
 And run the analysis file.
 ```bash
