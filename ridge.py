@@ -61,6 +61,7 @@ def det_ridge_leverage(A, k, epsilon, plot, plot_loc):
         plot_eigenvalues(eig, plot_loc)
         #plot_svd(U, eig, k, plot_loc)
     print(AAt.shape, eig[k:].shape)
+    print('fraction of frob norm captured by k', np.sum(eig[0:k]/np.sum(eig) ))
     AnotkF2 = np.sum(eig[k:])
     ridge_kernel = U.dot( np.diag(1/(eig + AnotkF2/k))).dot(Ut)
     #ridge_kernel = scipy.linalg.inv(AAt + AnotkF2/k *np.diag(np.ones(AAt.shape[0])))
@@ -137,7 +138,7 @@ def det_ksub_leverage(A, k, epsilon, plot, plot_loc):
         #plot_random_orthog_proj(A, index_keep, epsilon, k, plot_loc)
     return(theta, index_keep, tau_sorted, index_drop, tau_tot)
 
-def random_ridge_leverage(A, k, epsilon=0.1, delta=0.1, without_replacement=True):
+def random_ridge_leverage(A, k, theta, plot=False, without_replacement=False, rs=32342342):
     """
     from http://arxiv.org/abs/1511.07263
     A should be n by d, d>> n
@@ -152,19 +153,27 @@ def random_ridge_leverage(A, k, epsilon=0.1, delta=0.1, without_replacement=True
     print(AAt.shape, eig[k:].shape)
     AnotkF2 = np.sum(eig[k:])
     ridge_kernel = U.dot( np.diag(1/(eig + AnotkF2/k))).dot(Ut)
+    tau =np.zeros((A.shape[1]))
     for i in range(A.shape[1]):
         tau[i] = A.iloc[:, i][:, None].T.dot(ridge_kernel).dot(A.iloc[:, i])
     #U, sing, Vt = scipy.sparse.linalg.svds(A)
-    tau = pd.DataFrame(tau)
+    #tau = pd.DataFrame(tau)
     #print(tau)
     tau_tot = np.sum(tau)
-    theta = np.int( 2 * k / epsilon**2 * np.log(16* k / delta))
-    print('number of columns sampled', theta)
+    print('number of columns to sample', theta)
     p = tau/tau_tot
+    print('pshape', p.shape)
     if without_replacement:
+        q=np.minimum(p * theta *12 , np.ones(p.shape))
+        R= scipy.stats.bernoulli.rvs(q, random_state=rs)
+        index_keep = np.array(range(A.shape[1]))[(R != 0)]
+        C=(A/np.sqrt(q)).iloc[:, index_keep]
+        print(C.shape)
     else:
-        R = np.random.multinomial(theta , p)
+        R = scipy.stats.multinomial.rvs(theta, p, size=1, random_state=rs)
+        R=R[0, :]
         print('number of distinct columns sampled ', np.sum(R != 0))
+        index_keep = np.array(range(A.shape[1]))[(R != 0)]
         C = np.zeros((A.shape[0], theta))
         #D= np.zeros((A.shape[0], np.sum(R != 0)))
         counter=0
@@ -174,9 +183,54 @@ def random_ridge_leverage(A, k, epsilon=0.1, delta=0.1, without_replacement=True
                 # D[:, counterD] = np.sqrt(R[i]) * A[:, i] /np.sqrt(t* p[i])
                 # counterD=counterD+1
                 for j in range(R[i]):
-                    C[:, counter] =  A[:, i] /np.sqrt(theta* p[i])
+                    C[:, counter] =  A.iloc[:, i] /np.sqrt(theta* p[i])
                     counter = counter +1  
-    return(theta, C, R)
+    return(C, R, index_keep)
+
+
+# def random_ridge_leverage(A, k, epsilon=0.1, delta=0.1, plot=False, without_replacement=False, rs=32342342):
+#     """
+#     from http://arxiv.org/abs/1511.07263
+#     A should be n by d, d>> n
+#     k is the rank of the projection with theoretical gaurantees.
+#     choose epsilon and delta to be less than one.
+#     """
+#     AAt = A.dot(A.T)
+#     U, eig, Ut = scipy.linalg.svd(AAt)
+#     if plot:
+#         plot_eigenvalues(eig, plot_loc)
+#         plot_svd(U, eig, k, plot_loc)
+#     print(AAt.shape, eig[k:].shape)
+#     AnotkF2 = np.sum(eig[k:])
+#     ridge_kernel = U.dot( np.diag(1/(eig + AnotkF2/k))).dot(Ut)
+#     tau =np.zeros((A.shape[1]))
+#     for i in range(A.shape[1]):
+#         tau[i] = A.iloc[:, i][:, None].T.dot(ridge_kernel).dot(A.iloc[:, i])
+#     #U, sing, Vt = scipy.sparse.linalg.svds(A)
+#     #tau = pd.DataFrame(tau)
+#     #print(tau)
+#     tau_tot = np.sum(tau)
+#     theta = np.int( 2 * k / epsilon**2 * np.log(16* k / delta))
+#     print('number of columns sampled', theta)
+#     p = tau/tau_tot
+#     print('pshape', p.shape)
+#     if without_replacement:
+#         print('code not done yet')
+#     else:
+#         R = scipy.stats.multinomial(theta , p, rs)
+#         print('number of distinct columns sampled ', np.sum(R != 0))
+#         C = np.zeros((A.shape[0], theta))
+#         #D= np.zeros((A.shape[0], np.sum(R != 0)))
+#         counter=0
+#         #counterD=0
+#         for i in range(A.shape[1]):
+#             if R[i]!=0: 
+#                 # D[:, counterD] = np.sqrt(R[i]) * A[:, i] /np.sqrt(t* p[i])
+#                 # counterD=counterD+1
+#                 for j in range(R[i]):
+#                     C[:, counter] =  A.iloc[:, i] /np.sqrt(theta* p[i])
+#                     counter = counter +1  
+#     return(theta, C, R)
 
 def plot_columns_error(tau_sorted, pl_index, k, plot_loc):
     errors = np.cumsum(tau_sorted.values[::-1])
@@ -519,6 +573,28 @@ def bound_check(A, index_keep, k, epsilon):
     print('lowerbound eqn 10', np.sum(ridge_kernel_eigs <= ridge_kernel_eigs_c))
     print('upperbound eqn 10', np.sum(ridge_kernel_eigs_c <= (1-(alpha +1 )* epsilon)**(-1)* ridge_kernel_eigs))
     print('ridge_kernel ratio', np.average( ridge_kernel_eigs_c/ ridge_kernel_eigs)  )
+
+def bound_check_random(A, C):
+    AAt = A.dot(A.T)
+    U, eig, Ut = scipy.linalg.svd(AAt)
+    print(AAt.shape, eig[k:].shape)
+    AnotkF2 = np.sum(eig[k:])
+    ridge_kernel_eigs =  1/(eig + AnotkF2/k)
+    CCt=C.dot(C.T)
+    Uc, eig_c, Uct = scipy.linalg.svd(CCt)
+    CnotkF2 = np.sum(eig_c[k:])
+    ridge_kernel_eigs_c =  1/(eig_c + CnotkF2/k)
+    alpha = 2 *(2+ np.sqrt(2))
+    # print('lowerbound eqn 7', np.sum((1-epsilon)* eig - epsilon*AnotkF2/k  <= eig_c ) )
+    # print('upperbound eqn 7', np.sum( eig_c <= eig))
+    print('average eig ratio',  np.average(eig_c/eig) )
+    # print('lowerbound eqn 53', (1- alpha* epsilon)* AnotkF2 <= CnotkF2)
+    # print('upperbound eqn 53', CnotkF2 <= AnotkF2)
+    print('frob ratio', CnotkF2/AnotkF2)
+    # print('lowerbound eqn 10', np.sum(ridge_kernel_eigs <= ridge_kernel_eigs_c))
+    # print('upperbound eqn 10', np.sum(ridge_kernel_eigs_c <= (1-(alpha +1 )* epsilon)**(-1)* ridge_kernel_eigs))
+    print('ridge_kernel ratio', np.average( ridge_kernel_eigs_c/ ridge_kernel_eigs)  )
+
 
 
 def do_ridge_reg(y, A, index_keep, k, AnotkF2, epsilon, plot_loc, plot=True):
