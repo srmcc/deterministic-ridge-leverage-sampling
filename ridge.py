@@ -673,7 +673,7 @@ def do_ridge_reg_sim(A, index_keep, k, AnotkF2, epsilon, sigma2, plot_loc, nrep,
     riskC = np.sum(err_yC)/(nrep * A.shape[0])
     alpha = 2 *(2+ np.sqrt(2))
     beta = 2 * alpha *(-1 + 2* alpha + 3* alpha**2)/((1-alpha)**2)
-    print('bound', riskC <(1-beta* epsilon)**(-2)* riskA )
+    print('bound', riskC <=(1+ beta* epsilon)* riskA , riskC , (1+ beta* epsilon)* riskA )
     print('ratio', riskC/riskA)
     return(riskA, riskC)
 
