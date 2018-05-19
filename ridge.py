@@ -767,7 +767,7 @@ if __name__ == "__main__":
     plot = True
 
     #getting and making the sample labels
-    labels=pd.read_csv(setup_dir+ 'tcga_LGG_tumor_labels.csv', index_col=0, sep=',')
+    labels=pd.read_csv(setup_dir+ '/tcga_LGG_tumor_labels.csv', index_col=0, sep=',')
     all_labels=pd.DataFrame(np.zeros(mo.shape[0]), index=mo.index)
     c=0
     for item in mo.index:
