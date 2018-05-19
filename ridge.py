@@ -234,9 +234,9 @@ def random_ridge_leverage(A, k, theta, plot=False, without_replacement=False, rs
 
 def plot_columns_error(tau_sorted, pl_index, k, plot_loc):
     errors = np.cumsum(tau_sorted.values[::-1])
-    pl_column_pred=np.zeros(errors.shape)
-    for i in range(errors.shape[0]):
-        pl_column_pred[i]= predict_n_columns(pl_index, k, errors[i])
+    # pl_column_pred=np.zeros(errors.shape)
+    # for i in range(errors.shape[0]):
+    #     pl_column_pred[i]= predict_n_columns(pl_index, k, errors[i])
     kept_columns=np.array(range(0, errors.shape[0])[::-1])
     fig, ax = plt.subplots()
     ax.scatter(errors, kept_columns,c='gray',s=36,edgecolors='gray',
