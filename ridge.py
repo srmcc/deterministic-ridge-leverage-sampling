@@ -682,6 +682,7 @@ def load_data(data_directory):
     filenames = glob.glob(data_directory+ '*280*')
     data = pd.DataFrame([])
     data_order = []
+    data_shape =[]
     c = 0
     for f in filenames:
         f_short = re.search(r'/[\w\.-]+.csv', f)
@@ -697,7 +698,8 @@ def load_data(data_directory):
         data= pd.concat([data, data_file])
         print(data.shape)
         data_order.append(f_short)
-    return(data, data_order)
+        data_shape.append(data_file.shape[0])
+    return(data, data_order, data_shape)
 
 def nan_to_mean(X, big=False):
     if big:
@@ -732,6 +734,65 @@ def non_zero_cols(x):
     #print(np.sum(np.sum(x, axis=0)!=0), x.shape)
     return(x)
 
+def fix_labels(mo, mo_order, mo_shapes):
+    feature_labels=[]
+    cna_labels=[]
+    cnv_labels=[]
+    miRNA_labels=[]
+    mut_labels =[]
+    RNA_labels=[]
+    for i, item in enumerate(mo.index):
+        new_item = item.replace('d1.', '').replace('d2.', '') + '_' + str(i)
+        feature_labels.append(new_item)
+        if i < mo_shapes[0]:
+            cna_labels.append(new_item)
+        elif i < mo_shapes[0] + mo_shapes[1]:
+            cnv_labels.append(new_item)
+        elif i < mo_shapes[0] + mo_shapes[1] + mo_shapes[2]:
+            miRNA_labels.append(new_item)
+        elif i < mo_shapes[0] + mo_shapes[1] + mo_shapes[2] + mo_shapes[3]:
+            mut_labels.append(new_item)
+        elif i < mo_shapes[0] + mo_shapes[1] + mo_shapes[2] + mo_shapes[3] + mo_shapes[4]:
+            RNA_labels.append(new_item)
+    mo.index=feature_labels
+    return(mo, cna_labels, cnv_labels, miRNA_labels, mut_labels, RNA_labels)
+
+def compare_kept(A, index_keep, cna_labels, cnv_labels, miRNA_labels, mut_labels, RNA_labels, plot_loc):
+    C=A.iloc[:, index_keep]
+    order = ['CNA', 'CNV', 'miRNASeq', ' Mut', 'RNASeq']
+    colors =['C0', 'C1', 'C3', 'C5', 'lightgray']
+    counter_A = np.zeros((5))
+    counter_C = np.zeros((5))
+    for item in A.columns:
+        if item in cna_labels:
+            counter_A[0]= counter_A[0]+1
+        elif item in cnv_labels:
+            counter_A[1]= counter_A[1]+1
+        elif item in miRNA_labels:
+            counter_A[2]= counter_A[2]+1
+        elif item in mut_labels:
+            counter_A[3]= counter_A[3]+1
+        elif item in RNA_labels:
+            counter_A[4]= counter_A[4]+1
+    for item in C.columns:
+        if item in cna_labels:
+            counter_C[0]= counter_C[0]+1
+        elif item in cnv_labels:
+            counter_C[1]= counter_C[1]+1
+        elif item in miRNA_labels:
+            counter_C[2]= counter_C[2]+1
+        elif item in mut_labels:
+            counter_C[3]= counter_C[3]+1
+        elif item in RNA_labels:
+            counter_C[4]= counter_C[4]+1
+    fig, ax = plt.subplots()
+    plt.pie(counter_A, labels=order, colors= colors, autopct='%1.1f%%')
+    plt.axis('equal')
+    fig.tight_layout()
+    plt.savefig(plot_loc+ 'plot_pie_all.pdf')
+    plt.close()
+    return(counter_A, counter_C, order)
+
 
 if __name__ == "__main__":
     setup_dir= os.getcwd()
@@ -743,7 +804,8 @@ if __name__ == "__main__":
         os.system('mkdir ' + data_directory +'not_in_use/')
         for csvs in ['tcga_LGG_Methylation_280.csv', 'tcga_LGG_RNASeq2_barcodes.csv', 'tcga_LGG_Clinical_280.csv']:
             os.system('mv ' +data_directory + csvs+ ' ' + data_directory +'not_in_use/' )
-    mo, mo_order=load_data(data_directory)
+    mo, mo_order, mo_shapes=load_data(data_directory)
+    mo, cna_labels, cnv_labels, miRNA_labels, mut_labels, RNA_labels = fix_labels(mo, mo_order, mo_shapes)
     mo=mo.T
     mo=non_zero_cols(mo)
     #outlier
@@ -779,7 +841,10 @@ if __name__ == "__main__":
     short_labels=make_categorical(all_labels.iloc[:, 0])
     #doing ridge leverage
     theta, index_keep, tau_sorted, index_drop, tau_tot, AnotkF2 = det_ridge_leverage(mo, k, epsilon, plot, plot_loc)
+    (counter_mo, counter_C, order)= compare_kept(mo, index_keep, cna_labels, cnv_labels, miRNA_labels, mut_labels, RNA_labels, plot_loc)
     print("ridge leverage number of kept columns", theta)
+    print("types of columns originally, after filtering for nans and missing", order, counter_mo)
+    print("types of columns kept by DCSS", order, counter_C)
     theta_cl, index_keep_cl, tau_sorted_cl, index_drop_cl, tau_tot_cl = det_ksub_leverage(mo, mo.shape[0],  epsilon, plot, plot_loc + '_classical_')
     plot_comparison(tau_sorted, tau_sorted_cl)
     #svd
