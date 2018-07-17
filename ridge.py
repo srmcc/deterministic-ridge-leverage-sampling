@@ -759,7 +759,7 @@ def fix_labels(mo, mo_order, mo_shapes):
 
 def compare_kept(A, index_keep, cna_labels, cnv_labels, miRNA_labels, mut_labels, RNA_labels, plot_loc):
     C=A.iloc[:, index_keep]
-    order = ['CNA', 'CNV', 'miRNASeq', ' Mut', 'RNASeq']
+    order = ['CNA', 'CNV', 'miRNASeq', ' Mutations', 'RNASeq']
     colors =['C0', 'C1', 'C3', 'C5', 'lightgray']
     counter_A = np.zeros((5))
     counter_C = np.zeros((5))
